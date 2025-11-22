@@ -22,10 +22,10 @@ $service_data = [
     'Electrician' => ['Electrician', 'electrician.png'],
     'Cleaning' => ['Cleaning', 'cleaner1.png'],
     'Painter' => ['Painter', 'painter.png'],
-    'AC Repair' => ['AC Repair', 'acRepair1.png'],
+    'ACRepair' => ['AC Repair', 'acRepair1.png'],
     'Carpenter' => ['Carpenter', 'carpenter.png'],
     'Mason' => ['Mason', 'mason.png'],
-    'Pest Control' => ['Pest Control', 'pestControl.jpg']
+    'PestControl' => ['Pest Control', 'pestControl.jpg']
 ];
 
 $service_name = $service_data[$db_service_type][0] ?? 'Unknown Service';
@@ -62,10 +62,28 @@ $vendors = $result->fetch_all(MYSQLI_ASSOC);
       box-shadow: 0 6px 15px rgba(0,0,0,0.15);
     }
     
-    .vendor-icon {
-      font-size: 3rem;
-      color: #2563eb;
+    /* Vendor Profile Picture Styles */
+    .vendor-profile-pic {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 3px solid #2563eb;
       margin-bottom: 15px;
+    }
+    
+    .vendor-profile-pic-placeholder {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      background: #2563eb;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 2rem;
+      margin-bottom: 15px;
+      border: 3px solid #2563eb;
     }
     
     .vendor-info {
@@ -111,6 +129,15 @@ $vendors = $result->fetch_all(MYSQLI_ASSOC);
     .book-btn:hover {
       background: #1e40af;
     }
+    
+    .services-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+      gap: 25px;
+      padding: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
   </style>
 </head>
 <body>
@@ -127,9 +154,23 @@ $vendors = $result->fetch_all(MYSQLI_ASSOC);
       <div class="services-grid">
         <?php foreach($vendors as $vendor): ?>
           <div class="vendor-card">
-            <div class="vendor-icon">
-              <i class="fa-solid fa-user-tie"></i>
+            <!-- Vendor Profile Picture -->
+            <div class="vendor-profile">
+              <?php 
+              $vendor_profile_pic = !empty($vendor['profile_image']) ? $vendor['profile_image'] : 'default.png';
+              ?>
+              
+              <?php if ($vendor_profile_pic && $vendor_profile_pic !== 'default.png'): ?>
+                <img src="uploads/profiles/<?php echo $vendor_profile_pic; ?>" 
+                     alt="<?php echo htmlspecialchars($vendor['name']); ?>" 
+                     class="vendor-profile-pic">
+              <?php else: ?>
+                <div class="vendor-profile-pic-placeholder">
+                  <i class="fa-solid fa-user"></i>
+                </div>
+              <?php endif; ?>
             </div>
+            
             <h3 style="color: #2563eb; margin-bottom: 15px;"><?php echo htmlspecialchars($vendor['name']); ?></h3>
             
             <div class="vendor-info">
