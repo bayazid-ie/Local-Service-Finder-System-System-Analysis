@@ -16,6 +16,9 @@ $stmt->execute();
 $result = $stmt->get_result();
 $vendor = $result->fetch_assoc();
 
+// ADDED: Profile picture variable
+$profile_image = !empty($vendor['profile_image']) ? $vendor['profile_image'] : 'default.png';
+
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $hourly_rate = $_POST['hourly_rate'];
     $min_charge = $_POST['min_charge'];
@@ -23,9 +26,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $phone = $_POST['phone'];
     $location = $_POST['location'];
     
-    $update_sql = "UPDATE vendors SET hourly_rate = ?, min_charge = ?, service_description = ?, phone = ?, location = ? WHERE id = ?";
+    // ADDED: Simple profile picture handling
+    $new_profile_image = $profile_image;
+    if (isset($_FILES['profile_picture']) && $_FILES['profile_picture']['error'] == 0) {
+        $file_extension = pathinfo($_FILES['profile_picture']['name'], PATHINFO_EXTENSION);
+        $new_filename = 'vendor_' . $vendor_id . '_' . time() . '.' . $file_extension;
+        $upload_path = 'uploads/profiles/' . $new_filename;
+        
+        if (move_uploaded_file($_FILES['profile_picture']['tmp_name'], $upload_path)) {
+            $new_profile_image = $new_filename;
+        }
+    }
+    
+    // ADDED: profile_image to the query
+    $update_sql = "UPDATE vendors SET hourly_rate = ?, min_charge = ?, service_description = ?, phone = ?, location = ?, profile_image = ? WHERE id = ?";
     $update_stmt = $conn->prepare($update_sql);
-    $update_stmt->bind_param("ddsssi", $hourly_rate, $min_charge, $service_description, $phone, $location, $vendor_id);
+    $update_stmt->bind_param("ddssssi", $hourly_rate, $min_charge, $service_description, $phone, $location, $new_profile_image, $vendor_id);
     
     if ($update_stmt->execute()) {
         $success = "Profile updated successfully!";
@@ -35,6 +51,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $vendor['service_description'] = $service_description;
         $vendor['phone'] = $phone;
         $vendor['location'] = $location;
+        $vendor['profile_image'] = $new_profile_image;
+        $profile_image = $new_profile_image;
     }
 }
 ?>
@@ -69,6 +87,73 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     
     .profile-header p {
       color: #666;
+    }
+    
+    /* FIXED: Profile picture styles */
+    .profile-picture-section {
+        text-align: center;
+        margin-bottom: 30px;
+        padding: 30px 20px;
+        background: #f8fafc;
+        border-radius: 12px;
+        border: 2px dashed #e2e8f0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .current-profile-pic {
+        width: 150px;
+        height: 150px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 4px solid #2563eb;
+        margin-bottom: 20px;
+    }
+
+    .profile-picture-placeholder {
+        width: 150px;
+        height: 150px;
+        border-radius: 50%;
+        background: #2563eb;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 3rem;
+        margin-bottom: 20px;
+        border: 4px solid #2563eb;
+    }
+
+    .file-upload-label {
+        background: #2563eb;
+        color: white;
+        padding: 12px 25px;
+        border-radius: 8px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 500;
+        transition: background 0.3s ease;
+        margin-bottom: 10px;
+    }
+
+    .file-upload-label:hover {
+        background: #1e40af;
+        transform: translateY(-2px);
+    }
+
+    input[type="file"] {
+        display: none;
+    }
+
+    .file-info {
+        color: #666;
+        font-size: 14px;
+        text-align: center;
+        margin-top: 10px;
     }
     
     .form-group {
@@ -190,6 +275,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
       .pricing-grid {
         grid-template-columns: 1fr;
       }
+      
+      .current-profile-pic,
+      .profile-picture-placeholder {
+        width: 120px;
+        height: 120px;
+      }
     }
   </style>
 </head>
@@ -208,7 +299,31 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
       </div>
     <?php endif; ?>
     
-    <form method="POST">
+    <!-- CHANGED: Added enctype for file upload -->
+    <form method="POST" enctype="multipart/form-data">
+      
+      <!-- Profile picture section -->
+<div class="profile-picture-section">
+    <h3 style="margin-bottom: 25px; color: #2563eb; font-size: 1.3rem;">Profile Picture</h3>
+    
+    <?php if ($profile_image && $profile_image !== 'default.png'): ?>
+        <img src="uploads/profiles/<?php echo $profile_image; ?>" alt="Profile Picture" class="current-profile-pic">
+    <?php else: ?>
+        <div class="profile-picture-placeholder">
+            <i class="fa-solid fa-user"></i>
+        </div>
+    <?php endif; ?>
+    
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+        <label for="profile_picture" class="file-upload-label">
+            <i class="fa-solid fa-camera"></i> Choose New Photo
+        </label>
+        <input type="file" id="profile_picture" name="profile_picture" accept="image/*">
+        <div id="file-name" style="color: #666; font-size: 14px; margin-top: 5px;">No file chosen</div>
+        <div class="file-info">JPG, PNG, GIF (Max 2MB)</div>
+    </div>
+</div>
+      
       <!-- Contact Information -->
       <div class="form-group">
         <label>Contact Information</label>
@@ -274,4 +389,53 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     </form>
   </div>
 </body>
+
+<script>
+// Image preview functionality
+document.getElementById('profile_picture').addEventListener('change', function(e) {
+    const file = this.files[0];
+    if (file) {
+        // Show file name
+        document.getElementById('file-name').textContent = file.name;
+        
+        // Create image preview
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            // Remove existing placeholder or image
+            const existingPic = document.querySelector('.current-profile-pic');
+            const existingPlaceholder = document.querySelector('.profile-picture-placeholder');
+            
+            if (existingPic) {
+                existingPic.src = e.target.result;
+            } else if (existingPlaceholder) {
+                // Replace placeholder with actual image preview
+                existingPlaceholder.style.display = 'none';
+                
+                const newImg = document.createElement('img');
+                newImg.src = e.target.result;
+                newImg.alt = 'Profile Picture Preview';
+                newImg.className = 'current-profile-pic';
+                newImg.style.display = 'block';
+                
+                existingPlaceholder.parentNode.insertBefore(newImg, existingPlaceholder);
+            } else {
+                // Create new image element
+                const newImg = document.createElement('img');
+                newImg.src = e.target.result;
+                newImg.alt = 'Profile Picture Preview';
+                newImg.className = 'current-profile-pic';
+                
+                const profileSection = document.querySelector('.profile-picture-section');
+                const placeholder = profileSection.querySelector('.profile-picture-placeholder');
+                if (placeholder) {
+                    placeholder.style.display = 'none';
+                }
+                profileSection.insertBefore(newImg, profileSection.querySelector('.file-upload-label').parentNode);
+            }
+        }
+        reader.readAsDataURL(file);
+    }
+});
+</script>
+
 </html>
