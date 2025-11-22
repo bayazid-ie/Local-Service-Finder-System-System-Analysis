@@ -31,7 +31,8 @@ if (session_status() === PHP_SESSION_NONE) {
     <?php else: ?>
       <!-- Show login options for everyone -->
       <a href="vendor.php">Become a Vendor</a>
-      <a href="login.php" class="login-btn">Log In</a>
+      <a href="login.php" class="login-btn">User LogIn</a>
     <?php endif; ?>
   </nav>
+
 </header>
